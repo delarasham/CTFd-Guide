@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>README</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="create-a-ctfd-instance-beginner-guide">Create a CTFd Instance - Beginner Guide</h1>
+
+
+
+<h4 id="delara-shamanian">Delara Shamanian</h4>
+
+<hr>
+
+<ul>
+<li>Create and ssh into a DigitalOcean droplet</li>
+<li>Create a user called ctfd by running the command:</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">useradd <span class="hljs-attribute">-m</span> ctfd</code></pre>
+
+<ul>
+<li>Go the ctdf’s home directory directory and clone the CTFd repo:</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs bash"><span class="hljs-built_in">cd</span> /home/ctfd/
+<span class="hljs-built_in">sudo</span> -u ctfd git clone https://github.com/CTFd/CTFd.git</code></pre>
+
+<ul>
+<li>Install gunicorn</li>
+</ul>
+
+<pre class="prettyprint"><code class=" hljs bash"><span class="hljs-built_in">sudo</span> apt-get update
+<span class="hljs-built_in">sudo</span> apt-get install gunicorn</code></pre>
+
+<ul>
+<li>Check where gunicorn was installed by typing: <br>
+<code>which gunicorn</code> — save that address for later(<code>/usr/bin/gunicorn</code>)</li>
+<li>Go to the CTFd directory : <code>cd /home/ctfd/CTFd</code> and run <code>pip install -r requirements.txt</code> — you might have to install pip first</li>
+<li>Run : <code>cd /etc/systemd/system</code> and make a file called <code>gunicorn.service</code></li>
+<li>Add the following to that file:</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs makefile">[Unit]
+<span class="hljs-constant">Description</span>=gunicorn daemon
+<span class="hljs-constant">Requires</span>=gunicorn.socket
+<span class="hljs-constant">After</span>=network.target
+
+[Service]
+<span class="hljs-constant">Type</span>=notify
+<span class="hljs-comment"># the specific user that our service will run as</span>
+<span class="hljs-constant">User</span>=ctfd
+<span class="hljs-constant">Group</span>=ctfd
+<span class="hljs-comment"># another option for an even more restricted service is</span>
+<span class="hljs-comment"># DynamicUser=yes</span>
+<span class="hljs-constant">RuntimeDirectory</span>=gunicorn
+<span class="hljs-constant">WorkingDirectory</span>=/home/ctfd/CTFd
+<span class="hljs-constant">ExecStart</span>=/usr/bin/gunicorn 'CTFd:create_app()'
+<span class="hljs-constant">ExecReload</span>=/bin/kill -s HUP $MAINPID
+<span class="hljs-constant">KillMode</span>=mixed
+<span class="hljs-constant">TimeoutStopSec</span>=5
+<span class="hljs-constant">PrivateTmp</span>=true
+
+[Install]
+<span class="hljs-constant">WantedBy</span>=multi-user.target</code></pre>
+
+<ul>
+<li>Add another file to the same directory called <code>gunicorn.socket</code></li>
+<li>Add the following to the file:</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs makefile">[Unit]
+<span class="hljs-constant">Description</span>=gunicorn socket
+
+[Socket]
+<span class="hljs-constant">ListenStream</span>=/run/gunicorn.sock
+
+<span class="hljs-constant">User</span>=www-data
+<span class="hljs-comment"># Optionally restrict the socket permissions even more.</span>
+<span class="hljs-comment"># Mode=600</span>
+
+[Install]
+<span class="hljs-constant">WantedBy</span>=sockets.target</code></pre>
+
+<ul>
+<li>Run the following commands:</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">systemctl enable --now gunicorn<span class="hljs-preprocessor">.socket</span>
+systemctl start gunicorn<span class="hljs-preprocessor">.service</span>
+systemctl status gunicorn<span class="hljs-preprocessor">.service</span></code></pre>
+
+<p>If everything worked correctly your CTFd instance should be running now.</p>
+
+<ul>
+<li>Install nginx:</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs bash">    <span class="hljs-built_in">sudo</span> apt install nginx</code></pre>
+
+<ul>
+<li>Run <code>cd /etc/nginx</code> and remove the <code>nginx.conf</code> and make a new one</li>
+<li>Add the following to <code>nginx.config</code> </li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs nginx"><span class="hljs-title">user</span> www-data;
+<span class="hljs-title">worker_processes</span> auto;
+<span class="hljs-title">pid</span> /run/nginx.pid;
+<span class="hljs-title">include</span> /etc/nginx/modules-enabled/<span class="hljs-regexp">*.conf</span>;
+
+<span class="hljs-title">events</span> {
+        <span class="hljs-title">worker_connections</span> <span class="hljs-number">1024</span>;
+        <span class="hljs-comment"># multi_accept on;</span>
+}
+
+<span class="hljs-title">http</span> {
+
+        <span class="hljs-comment">##</span>
+        <span class="hljs-comment"># Basic Settings</span>
+        <span class="hljs-comment">##</span>
+
+        <span class="hljs-title">sendfile</span> <span class="hljs-built_in">on</span>;
+        <span class="hljs-title">tcp_nopush</span> <span class="hljs-built_in">on</span>;
+        <span class="hljs-title">tcp_nodelay</span> <span class="hljs-built_in">on</span>;
+        <span class="hljs-title">keepalive_timeout</span> <span class="hljs-number">65</span>;
+        <span class="hljs-title">types_hash_max_size</span> <span class="hljs-number">2048</span>;
+        <span class="hljs-comment"># server_tokens off;</span>
+
+        <span class="hljs-comment"># server_names_hash_bucket_size 64;</span>
+        <span class="hljs-comment"># server_name_in_redirect off;</span>
+
+        <span class="hljs-title">include</span> /etc/nginx/mime.types;
+        <span class="hljs-title">default_type</span> application/octet-stream;
+
+        <span class="hljs-comment">##</span>
+        <span class="hljs-comment"># SSL Settings</span>
+        <span class="hljs-comment">##</span>
+
+        <span class="hljs-title">ssl_protocols</span> TLSv1 TLSv1.<span class="hljs-number">1</span> TLSv1.<span class="hljs-number">2</span>; <span class="hljs-comment"># Dropping SSLv3, ref: POODLE</span>
+        <span class="hljs-title">ssl_prefer_server_ciphers</span> <span class="hljs-built_in">on</span>;
+
+        <span class="hljs-comment">##</span>
+        <span class="hljs-comment"># Logging Settings</span>
+        <span class="hljs-comment">##</span>
+
+        <span class="hljs-title">access_log</span> /var/log/nginx/access.log;
+        <span class="hljs-title">error_log</span> /var/log/nginx/error.log;
+
+        <span class="hljs-title">server</span> {
+
+                <span class="hljs-title">listen</span> <span class="hljs-number">80</span>;
+
+                <span class="hljs-title">client_max_body_size</span> <span class="hljs-number">4G</span>;
+
+                <span class="hljs-title">location</span> / {
+                        <span class="hljs-title">proxy_pass</span> <span class="hljs-url">http://unix:/run/gunicorn.sock</span>;
+                        <span class="hljs-title">proxy_redirect</span> <span class="hljs-built_in">off</span>;
+                        <span class="hljs-title">proxy_set_header</span> Host <span class="hljs-variable">$host</span>;
+                        <span class="hljs-title">proxy_set_header</span> X-Real-IP <span class="hljs-variable">$remote_addr</span>;
+                        <span class="hljs-title">proxy_set_header</span> X-Forwarded-For <span class="hljs-variable">$proxy_add_x_forwarded_for</span>;
+                        <span class="hljs-title">proxy_set_header</span> X-Forwarded-Host <span class="hljs-variable">$server_name</span>;
+                }
+        }
+
+        <span class="hljs-comment">##</span>
+        <span class="hljs-comment"># Virtual Host Configs</span>
+        <span class="hljs-comment">##</span>
+
+        <span class="hljs-title">include</span> /etc/nginx/conf.d/<span class="hljs-regexp">*.conf</span>;
+        <span class="hljs-title">include</span> /etc/nginx/sites-enabled/*;
+}</code></pre>
+
+<ul>
+<li><code>cd sites-enabled</code> and remove <code>default</code></li>
+<li>run <code>systemctl reload nginx</code> and this should spin up your CTFd instance.</li>
+<li>Paste the ip address of your droplet into your browser and you should be able to see your CTFd.</li>
+<li>Optionally you can spin up a MySQL and a Redis database on DigitalOcean and modify <code>CTFd/config.ini</code> accordingly.</li>
+</ul></div></body>
+</html>
