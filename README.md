@@ -1,5 +1,5 @@
-# Create a CTFd Instance - Beginner Guide
-This is a quick beginner guide on how to spin up a CTFd instance for hosting a CTF. It assumes you know how to spin up a DigitalOcean droplet and ssh into it. 
+# Creating a CTFd Instance - Beginner Guide
+This is a quick beginner guide on how to spin up a CTFd instance for hosting a CTF. It assumes you know how to spin up a DigitalOcean droplet and ssh into it.
 
 
 #### Delara Shamanian 
